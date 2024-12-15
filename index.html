@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Christian Brethren Church Parathode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            width: 80%;
+            margin: 20px auto;
+        }
+        .card {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .card h2 {
+            margin-top: 0;
+        }
+        .calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        .calendar div {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+            cursor: pointer;
+        }
+        .calendar div.weekday {
+            background-color: #f1c40f;
+            font-weight: bold;
+        }
+        .calendar div.day {
+            background-color: #ecf0f1;
+        }
+        .calendar div.day:hover {
+            background-color: #bdc3c7;
+        }
+        .calendar div.selected {
+            background-color: #3498db;
+            color: white;
+        }
+        .selected-date {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #2c3e50;
+        }
+        .month-nav {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .month-nav button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .month-nav h3 {
+            display: inline-block;
+            margin: 0 20px;
+            font-size: 24px;
+        }
+        .note-section {
+            margin-top: 20px;
+        }
+        .note-section textarea {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .note-section input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        .note-section button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        /* Styling for password input (dots) */
+        .passkey-section input {
+            padding: 10px;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        /* Adjusting font size for incomes */
+        #yearlyIncome, #monthlyIncome {
+            font-size: 1em; /* Slightly smaller font size */
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Parathode Brethren Christian Church</h1>
+    </header>
+
+    <div class="container">
+        <!-- Calendar Section -->
+        <div class="card">
+            <h2>Calendar</h2>
+            <div class="month-nav">
+                <button id="prevMonthBtn">Previous</button>
+                <h3 id="monthYear"></h3>
+                <button id="nextMonthBtn">Next</button>
+            </div>
+            <div class="calendar" id="calendar">
+                <div class="weekday">Sun</div>
+                <div class="weekday">Mon</div>
+                <div class="weekday">Tue</div>
+                <div class="weekday">Wed</div>
+                <div class="weekday">Thu</div>
+                <div class="weekday">Fri</div>
+                <div class="weekday">Sat</div>
+            </div>
+            <div class="selected-date" id="selectedDate">Selected Date: None</div>
+            <div class="note-section">
+                <textarea id="noteText" placeholder="Add a note for the selected date..."></textarea>
+                <input type="number" id="incomeInput" placeholder="Enter income for the day..." />
+                <button id="saveNoteBtn">Save Note</button>
+            </div>
+        </div>
+
+        <!-- Password Section to unlock incomes -->
+        <div class="passkey-section card">
+            <h2>Enter Pass Key to Show Incomes</h2>
+            <input type="password" id="passkeyInput" placeholder="Enter pass key" />
+            <button id="showIncomesBtn">Show Incomes</button>
+            <div id="incomeResults" style="display:none;">
+                <div class="card">
+                    <h2>Annual Income</h2>
+                    <p>Total Income for the Year: <strong id="yearlyIncome">₹0</strong></p>
+                </div>
+                <div class="card">
+                    <h2>Monthly Income</h2>
+                    <p>Total Income for This Month: <strong id="monthlyIncome">₹0</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMonth = new Date().getMonth(); // Current month (0-11)
+        let currentYear = new Date().getFullYear(); // Current year
+        let selectedDate = null; // Track selected date
+        const savedNotes = JSON.parse(localStorage.getItem('savedNotes')) || {}; // Load saved notes from localStorage
+        const dailyIncomes = JSON.parse(localStorage.getItem('dailyIncomes')) || {}; // Load daily incomes from localStorage
+        let monthlyIncome = JSON.parse(localStorage.getItem('monthlyIncome')) || 0; // Load monthly income from localStorage
+        let yearlyIncome = JSON.parse(localStorage.getItem('yearlyIncome')) || 0; // Load yearly income from localStorage
+        let monthlyIncomes = JSON.parse(localStorage.getItem('monthlyIncomes')) || Array(12).fill(0); // Load monthly incomes from localStorage
+
+        // Function to reset the income data for a new year
+        function resetYearlyIncome() {
+            monthlyIncomes = Array(12).fill(0);  // Reset all months to 0 income
+            yearlyIncome = 0; // Reset the yearly income
+            updateIncome(); // Recalculate and update the displayed income
+        }
+
+        // Function to reset monthly income when changing months
+        function resetMonthlyIncome() {
+            monthlyIncome = 0; // Reset monthly income to 0
+        }
+
+        // Function to calculate the total income for the month
+        function calculateMonthlyIncome() {
+            resetMonthlyIncome(); // Reset monthly income at the start of the new month
+
+            // Sum the income for all days in the month
+            for (let day = 1; day <= new Date(currentYear, currentMonth + 1, 0).getDate(); day++) {
+                const key = `${currentYear}-${currentMonth}-${day}`; // Updated key to include year
+                if (dailyIncomes[key]) {
+                    monthlyIncome += dailyIncomes[key];
+                }
+            }
+        }
+
+        // Function to calculate the total income for the year
+        function calculateYearlyIncome() {
+            yearlyIncome = 0; // Reset yearly income
+            // Sum the incomes of all months
+            for (let month = 0; month < 12; month++) {
+                yearlyIncome += monthlyIncomes[month];
+            }
+        }
+
+        // Function to update both monthly and yearly incomes
+        function updateIncome() {
+            calculateMonthlyIncome();
+            document.getElementById('monthlyIncome').innerText = `₹${monthlyIncome}`;
+
+            // Store the monthly income in the monthlyIncomes array
+            monthlyIncomes[currentMonth] = monthlyIncome;
+
+            calculateYearlyIncome();
+            document.getElementById('yearlyIncome').innerText = `₹${yearlyIncome}`;
+
+            // Save the updated incomes to localStorage
+            localStorage.setItem('monthlyIncomes', JSON.stringify(monthlyIncomes));
+            localStorage.setItem('yearlyIncome', JSON.stringify(yearlyIncome));
+            localStorage.setItem('monthlyIncome', JSON.stringify(monthlyIncome));
+        }
+
+        // Function to generate the calendar for the selected month
+        function generateCalendar() {
+            const calendar = document.getElementById('calendar');
+            const selectedDateElement = document.getElementById('selectedDate');
+            const monthYearElement = document.getElementById('monthYear');
+            const noteTextArea = document.getElementById('noteText');
+            const incomeInput = document.getElementById('incomeInput');
+            const saveNoteBtn = document.getElementById('saveNoteBtn');
+
+            // Set the month and year display
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            monthYearElement.innerText = `${monthNames[currentMonth]} ${currentYear}`;
+
+            // First day of the month
+            const firstDay = new Date(currentYear, currentMonth, 1);
+            const lastDay = new Date(currentYear, currentMonth + 1, 0); // Last day of the month
+
+            // Get the number of days in the month
+            const numDays = lastDay.getDate();
+
+            // Clear any previous calendar
+            calendar.innerHTML = ` 
+                <div class="weekday">Sun</div>
+                <div class="weekday">Mon</div>
+                <div class="weekday">Tue</div>
+                <div class="weekday">Wed</div>
+                <div class="weekday">Thu</div>
+                <div class="weekday">Fri</div>
+                <div class="weekday">Sat</div>
+            `;
+
+            // Fill in the days of the month
+            for (let i = 0; i < firstDay.getDay(); i++) {
+                calendar.innerHTML += '<div></div>'; // Empty divs for days before the first of the month
+            }
+
+            // Fill in the actual days of the month
+            for (let day = 1; day <= numDays; day++) {
+                const dayElement = document.createElement('div');
+                dayElement.classList.add('day');
+                dayElement.innerText = day;
+
+                // Display saved note for the day (if any)
+                const key = `${currentYear}-${currentMonth}-${day}`; // Key updated with year
+                if (savedNotes[key]) {
+                    dayElement.title = savedNotes[key]; // Show saved note as a tooltip
+                }
+
+                // Add an event listener to handle day selection
+                dayElement.addEventListener('click', function() {
+                    const selected = document.querySelector('.calendar .selected');
+                    if (selected) {
+                        selected.classList.remove('selected');
+                    }
+                    dayElement.classList.add('selected');
+                    selectedDate = day;
+                    selectedDateElement.innerText = `Selected Date: ${monthNames[currentMonth]} ${day}, ${currentYear}`;
+                    noteTextArea.value = savedNotes[key] || ''; // Pre-fill note textarea with saved note if it exists
+                    incomeInput.value = dailyIncomes[key] || ''; // Pre-fill income input with saved income if it exists
+                });
+
+                calendar.appendChild(dayElement);
+            }
+
+            // Handle save note button click
+            saveNoteBtn.onclick = function() {
+                if (selectedDate !== null) {
+                    const noteKey = `${currentYear}-${currentMonth}-${selectedDate}`; // Key updated with year
+                    savedNotes[noteKey] = noteTextArea.value; // Save the note for the selected date
+                    dailyIncomes[noteKey] = parseFloat(incomeInput.value) || 0; // Save income for the selected date
+
+                    // Save to localStorage
+                    localStorage.setItem('savedNotes', JSON.stringify(savedNotes));
+                    localStorage.setItem('dailyIncomes', JSON.stringify(dailyIncomes));
+
+                    updateIncome(); // Update income values
+                    alert("Note and Income saved successfully!");
+                    generateCalendar(); // Refresh the calendar to show updated note and income
+                } else {
+                    alert("Please select a date first.");
+                }
+            };
+        }
+
+        // Handle the previous month button
+        document.getElementById('prevMonthBtn').addEventListener('click', function() {
+            if (currentMonth === 0) {
+                currentMonth = 11; // Go to December
+                currentYear--;
+                resetYearlyIncome(); // Reset income when year changes
+            } else {
+                currentMonth--;
+            }
+
+            resetMonthlyIncome(); // Reset monthly income when changing months
+            generateCalendar(); // Regenerate calendar for the new month
+            updateIncome(); // Recalculate and update the incomes
+        });
+
+        // Handle the next month button
+        document.getElementById('nextMonthBtn').addEventListener('click', function() {
+            if (currentMonth === 11) {
+                currentMonth = 0; // Go to January
+                currentYear++;
+                resetYearlyIncome(); // Reset income when year changes
+            } else {
+                currentMonth++;
+            }
+
+            resetMonthlyIncome(); // Reset monthly income when changing months
+            generateCalendar(); // Regenerate calendar for the new month
+            updateIncome(); // Recalculate and update the incomes
+        });
+
+        // Show incomes only when the correct pass key is entered
+        document.getElementById('showIncomesBtn').addEventListener('click', function() {
+            const passkeyInput = document.getElementById('passkeyInput').value;
+            if (passkeyInput === '123') {
+                document.getElementById('incomeResults').style.display = 'block'; // Show the income results
+            } else {
+                alert("Incorrect pass key!");
+            }
+        });
+
+        // Initialize the calendar when the page loads
+        generateCalendar();
+    </script>
+</body>
+</html>
